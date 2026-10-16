@@ -117,37 +117,58 @@ VERTEX *grafo_insert_vertex(GRAFO *g, int e){
 
 // Cria uma aresta e a insere nas listas de adjacência dos dois extremos.
 EDGE *grafo_insert_edge(GRAFO *g, VERTEX *u, VERTEX *v, int e){
-    if(g == NULL || v == NULL || u == NULL || u == v){
+    if(g == NULL || u == NULL || v == NULL || u == v){
         return NULL;
     }
 
     EDGE *a = edge_create(e, u, v);
 
-    if(a != NULL){
-        // Insere a aresta na lista de u usando seu encadeamento próprio.
-        if(u->incidentes == NULL){
-            u->incidentes = a;
-        }
-        else{
-            a->u_prox = u->incidentes;
-            u->incidentes = a;
-            a->u_prox->u_ant = a;
-        }
-
-        // Insere a mesma aresta na lista de v.
-        if(v->incidentes == NULL){
-            v->incidentes = a;
-        }
-        else{
-            a->v_prox = v->incidentes;
-            v->incidentes = a;
-            a->v_prox->v_ant = a;
-        }
-
-        g->n_edge++;
-        u->n_incidentes++;
-        v->n_incidentes++;
+    if(a == NULL){
+        return NULL;
     }
+
+    // Insere a aresta no início da lista de u.
+    if(u->incidentes == NULL){
+        u->incidentes = a;
+    }
+    else{
+        EDGE *inicio = u->incidentes;
+
+        a->u_prox = inicio;
+        u->incidentes = a;
+
+        // Atualiza o predecessor usando o encadeamento de u.
+        if(inicio->u == u){
+            inicio->u_ant = a;
+        }
+        else{
+            inicio->v_ant = a;
+        }
+    }
+
+    // Insere a mesma aresta no início da lista de v.
+    if(v->incidentes == NULL){
+        v->incidentes = a;
+    }
+    else{
+        EDGE *inicio = v->incidentes;
+
+        a->v_prox = inicio;
+        v->incidentes = a;
+
+        // Atualiza o predecessor usando o encadeamento de v.
+        if(inicio->u == v){
+            inicio->u_ant = a;
+        }
+        else{
+            inicio->v_ant = a;
+        }
+    }
+
+    g->n_edge++;
+    u->n_incidentes++;
+    v->n_incidentes++;
+
     return a;
 }
 
@@ -157,32 +178,70 @@ void grafo_remove_edge(GRAFO *g, EDGE **a){
         return;
     }
 
-    // Atualiza a lista de adjacência de u.
-    if((*a)->u_ant == NULL){
-        (*a)->u->incidentes = (*a)->u_prox;
+    EDGE *atual = *a;
+    VERTEX *u = atual->u;
+    VERTEX *v = atual->v;
+
+    // Guarda os vizinhos da aresta na lista de u.
+    EDGE *u_ant = atual->u_ant;
+    EDGE *u_prox = atual->u_prox;
+
+    // Remove a aresta da lista de u.
+    if(u_ant == NULL){
+        u->incidentes = u_prox;
     }
     else{
-        (*a)->u_ant->u_prox = (*a)->u_prox;
-    }
-    if((*a)->u_prox != NULL){
-        (*a)->u_prox->u_ant = (*a)->u_ant;
+        if(u_ant->u == u){
+            u_ant->u_prox = u_prox;
+        }
+        else{
+            u_ant->v_prox = u_prox;
+        }
     }
 
-    // Atualiza a lista de adjacência de v.
-    if((*a)->v_ant == NULL){
-        (*a)->v->incidentes = (*a)->v_prox;
+    // Atualiza o predecessor do sucessor na lista de u.
+    if(u_prox != NULL){
+        if(u_prox->u == u){
+            u_prox->u_ant = u_ant;
+        }
+        else{
+            u_prox->v_ant = u_ant;
+        }
+    }
+
+    // Guarda os vizinhos da aresta na lista de v.
+    EDGE *v_ant = atual->v_ant;
+    EDGE *v_prox = atual->v_prox;
+
+    // Remove a aresta da lista de v.
+    if(v_ant == NULL){
+        v->incidentes = v_prox;
     }
     else{
-        (*a)->v_ant->v_prox = (*a)->v_prox;
-    }
-    if((*a)->v_prox != NULL){
-        (*a)->v_prox->v_ant = (*a)->v_ant;
+        if(v_ant->u == v){
+            v_ant->u_prox = v_prox;
+        }
+        else{
+            v_ant->v_prox = v_prox;
+        }
     }
 
+    // Atualiza o predecessor do sucessor na lista de v.
+    if(v_prox != NULL){
+        if(v_prox->u == v){
+            v_prox->u_ant = v_ant;
+        }
+        else{
+            v_prox->v_ant = v_ant;
+        }
+    }
+
+    // Atualiza os contadores do grafo e dos vértices.
     g->n_edge--;
-    (*a)->u->n_incidentes--;
-    (*a)->v->n_incidentes--;
+    u->n_incidentes--;
+    v->n_incidentes--;
 
+    // Libera a aresta somente depois de atualizar as duas listas.
     edge_erase(a);
 }
 
